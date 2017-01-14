@@ -161,6 +161,8 @@ public strictfp class RobotPlayer {
 				if (targetTreeLocation != null) { //DEBUG
 					rc.setIndicatorDot(targetTreeLocation, 15, 15, 200);
 				}
+				
+				Clock.yield();
 			}
 			catch (Exception e) {
 				System.out.println("Scout Exception");
