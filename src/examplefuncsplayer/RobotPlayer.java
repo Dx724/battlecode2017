@@ -44,6 +44,7 @@ public strictfp class RobotPlayer {
 
     static void runArchon() throws GameActionException {
         System.out.println("I'm an archon!");
+        
 
         // The code you want your robot to perform every round should be in this loop
         while (true) {
@@ -52,7 +53,7 @@ public strictfp class RobotPlayer {
             try {
 
                 // Generate a random direction
-                Direction dir = randomDirection();
+                Direction dir = randomDirection(); //TODO: Greedy robot hires/builds -- Span multiple turns if necessary
 
                 // Randomly attempt to build a gardener in this direction
                 if (rc.canHireGardener(dir) && Math.random() < .01) {
@@ -81,6 +82,8 @@ public strictfp class RobotPlayer {
 
 	static void runGardener() throws GameActionException {
         System.out.println("I'm a gardener!");
+        
+        int createNum = 0; //Scout, Soldier, Tank, Scout, Lumberjack, Soldier, Soldier, Tank, Soldier, Soldier, Tank, etc.
 
         // The code you want your robot to perform every round should be in this loop
         while (true) {
@@ -103,8 +106,29 @@ public strictfp class RobotPlayer {
                     rc.buildRobot(RobotType.LUMBERJACK, dir);
                 }*/
                 Direction rDir = randomDirection();
-                if (rc.canBuildRobot(RobotType.SCOUT, rDir)) {
-                	rc.buildRobot(RobotType.SCOUT, rDir);
+                if (createNum == 0 || createNum == 3) {
+	                if (rc.canBuildRobot(RobotType.SCOUT, rDir)) {
+	                	rc.buildRobot(RobotType.SCOUT, rDir);
+	                	createNum += 1;
+	                }
+                }
+                else if (createNum == 1 || (createNum > 4 && (createNum - 1) % 3 != 0)) {
+                	if (rc.canBuildRobot(RobotType.SOLDIER, rDir)) {
+                		rc.buildRobot(RobotType.SOLDIER, rDir);
+                		createNum += 1;
+                	}
+                }
+                else if (createNum == 4) {
+                	if (rc.canBuildRobot(RobotType.LUMBERJACK, rDir)) {
+                		rc.buildRobot(RobotType.LUMBERJACK, rDir);
+                		createNum += 1;
+                	}
+                }
+                else {
+                	if (rc.canBuildRobot(RobotType.TANK, rDir)) {
+                		rc.buildRobot(RobotType.LUMBERJACK, rDir);
+                		createNum += 1;
+                	}
                 }
 
                 // Move randomly
