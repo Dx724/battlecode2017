@@ -3,6 +3,12 @@ import battlecode.common.*;
 
 public strictfp class RobotPlayer {
     static RobotController rc;
+    
+    static float degreeOffset = 32.0f;
+    static float cosDeg = (float) Math.cos(degreeOffset);
+    static float sinDeg = (float) Math.sin(degreeOffset);
+    
+    static Direction targetDir = new Direction(degreeOffset);
 
     /**
      * run() is the method that is called when a robot is instantiated in the Battlecode world.
@@ -30,6 +36,9 @@ public strictfp class RobotPlayer {
             case LUMBERJACK:
                 runLumberjack();
                 break;
+            case SCOUT:
+            	runScout();
+            	break;
         }
 	}
 
@@ -54,9 +63,11 @@ public strictfp class RobotPlayer {
                 tryMove(randomDirection());
 
                 // Broadcast archon's location for other robots on the team to know
-                MapLocation myLocation = rc.getLocation();
+                MapLocation myLocation = rc.getLocation();  //TODO: Should this happen? Allows others to read position
                 rc.broadcast(0,(int)myLocation.x);
                 rc.broadcast(1,(int)myLocation.y);
+                
+                
 
                 // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
                 Clock.yield();
@@ -86,10 +97,14 @@ public strictfp class RobotPlayer {
                 Direction dir = randomDirection();
 
                 // Randomly attempt to build a soldier or lumberjack in this direction
-                if (rc.canBuildRobot(RobotType.SOLDIER, dir) && Math.random() < .01) {
+                /*if (rc.canBuildRobot(RobotType.SOLDIER, dir) && Math.random() < .01) {
                     rc.buildRobot(RobotType.SOLDIER, dir);
                 } else if (rc.canBuildRobot(RobotType.LUMBERJACK, dir) && Math.random() < .01 && rc.isBuildReady()) {
                     rc.buildRobot(RobotType.LUMBERJACK, dir);
+                }*/
+                Direction rDir = randomDirection();
+                if (rc.canBuildRobot(RobotType.SCOUT, rDir)) {
+                	rc.buildRobot(RobotType.SCOUT, rDir);
                 }
 
                 // Move randomly
@@ -104,6 +119,72 @@ public strictfp class RobotPlayer {
             }
         }
     }
+	
+	static void runScout() throws GameActionException {
+		MapLocation targetTreeLocation = null;
+		int failTurns = 0;
+		
+		while (true) {
+			try {
+				if (targetTreeLocation == null) {
+					targetTreeLocation = scout_getClosestShakeableTreeLocation();
+					if (targetTreeLocation == null) { //No Tree Found
+						if(!tryMove(targetDir)) {
+							targetDir.rotateRightDegrees(90);
+							if (!tryMove(targetDir)) {
+								targetDir.rotateRightDegrees(90);
+								if (!tryMove(targetDir)) {
+									targetDir.rotateRightDegrees(90);
+									if (!tryMove(targetDir)) {
+										targetDir.rotateRightDegrees(45);
+									}
+								}
+							}
+						}
+					}
+				}
+				else {
+					if (rc.canShake(targetTreeLocation)) {
+						rc.shake(targetTreeLocation);
+						targetTreeLocation = null;
+						failTurns = 0;
+					}
+					else {
+						tryMove(new Direction(rc.getLocation(), targetTreeLocation));
+						failTurns += 1;
+						if (failTurns >= 8) { //HC -- Scout sight radius divided by scout stride radius times two
+							targetTreeLocation = null;
+							failTurns = 0;
+						}
+					}
+				}
+				if (targetTreeLocation != null) { //DEBUG
+					rc.setIndicatorDot(targetTreeLocation, 15, 15, 200);
+				}
+			}
+			catch (Exception e) {
+				System.out.println("Scout Exception");
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	static MapLocation scout_getClosestShakeableTreeLocation() throws GameActionException { //Returns *null* when no trees are found
+		TreeInfo[] trees = rc.senseNearbyTrees(-1, Team.NEUTRAL);
+		float shortestDistance = Float.MAX_VALUE;
+		MapLocation closestTreeLocation = null;
+		for (TreeInfo tree : trees) {
+			if (tree.getContainedBullets() == 0 && tree.getContainedRobot() == null) {
+				continue;
+			}
+			float distance = rc.getLocation().distanceTo(tree.location);
+			if (distance < shortestDistance) {
+				shortestDistance = distance;
+				closestTreeLocation = tree.location;
+			}
+		}
+		return closestTreeLocation;
+	}
 
     static void runSoldier() throws GameActionException {
         System.out.println("I'm an soldier!");
