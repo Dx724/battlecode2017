@@ -130,13 +130,13 @@ public strictfp class RobotPlayer {
 					targetTreeLocation = scout_getClosestShakeableTreeLocation();
 					if (targetTreeLocation == null) { //No Tree Found
 						if(!tryMove(targetDir)) {
-							targetDir.rotateRightDegrees(90);
+							targetDir = targetDir.rotateRightDegrees(90);
 							if (!tryMove(targetDir)) {
-								targetDir.rotateRightDegrees(90);
+								targetDir = targetDir.rotateRightDegrees(90);
 								if (!tryMove(targetDir)) {
-									targetDir.rotateRightDegrees(90);
+									targetDir = targetDir.rotateRightDegrees(90);
 									if (!tryMove(targetDir)) {
-										targetDir.rotateRightDegrees(45);
+										targetDir = targetDir.rotateRightDegrees(45);
 									}
 								}
 							}
@@ -176,7 +176,7 @@ public strictfp class RobotPlayer {
 		float shortestDistance = Float.MAX_VALUE;
 		MapLocation closestTreeLocation = null;
 		for (TreeInfo tree : trees) {
-			if (tree.getContainedBullets() == 0 && tree.getContainedRobot() == null) {
+			if (tree.getContainedBullets() == 0 || tree.getContainedRobot() == null) {
 				continue;
 			}
 			float distance = rc.getLocation().distanceTo(tree.location);
