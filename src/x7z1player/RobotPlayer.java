@@ -382,25 +382,22 @@ public strictfp class RobotPlayer {
     }
     
     static boolean dodgeBullets(RobotController rc) throws GameActionException {
-    	BulletInfo bullet;
-    	try {
-    		bullet = rc.senseNearbyBullets()[0]; //First element should be closest
+    	BulletInfo[] bullets = rc.senseNearbyBullets();
+    	for (BulletInfo bullet : bullets) {
+	    	if (willCollideWithMe(bullet)) {
+	    		float radiansBetween = bullet.dir.radiansBetween(bullet.getLocation().directionTo(rc.getLocation()));
+	    		if (radiansBetween >= 0) {
+	    			return tryMove(bullet.dir.rotateRightDegrees(90));
+	    		}
+	    		else {
+	    			return tryMove(bullet.dir.rotateLeftDegrees(90));
+	    		}
+	    	}
+	    	else {
+	    		return false;
+	    	}
     	}
-    	catch (ArrayIndexOutOfBoundsException e) {
-    		return false;
-    	}
-    	if (willCollideWithMe(bullet)) {
-    		float radiansBetween = bullet.dir.radiansBetween(bullet.getLocation().directionTo(rc.getLocation()));
-    		if (radiansBetween >= 0) {
-    			return tryMove(bullet.dir.rotateRightDegrees(90));
-    		}
-    		else {
-    			return tryMove(bullet.dir.rotateLeftDegrees(90));
-    		}
-    	}
-    	else {
-    		return false;
-    	}
+    	return false;
     }
 
     /**
