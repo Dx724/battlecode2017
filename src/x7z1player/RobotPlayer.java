@@ -1,4 +1,4 @@
-package examplefuncsplayer;
+package x7z1player;
 import battlecode.common.*;
 
 public strictfp class RobotPlayer {
@@ -39,6 +39,9 @@ public strictfp class RobotPlayer {
             case SCOUT:
             	runScout();
             	break;
+            case TANK:
+            	runTank();
+            	break;
         }
 	}
 
@@ -68,7 +71,9 @@ public strictfp class RobotPlayer {
                 rc.broadcast(0,(int)myLocation.x);
                 rc.broadcast(1,(int)myLocation.y);
                 
-                
+                if (rc.getTeamBullets() > 350) {
+                	rc.donate(70);
+                }
 
                 // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
                 Clock.yield();
@@ -84,7 +89,7 @@ public strictfp class RobotPlayer {
         System.out.println("I'm a gardener!");
         
         int createNum = 0; //Scout, Soldier, Tank, Scout, Lumberjack, Soldier, Soldier, Tank, Soldier, Soldier, Tank, etc.
-
+        int buildFailTurns = 0;
         // The code you want your robot to perform every round should be in this loop
         while (true) {
 
@@ -107,27 +112,63 @@ public strictfp class RobotPlayer {
                 }*/
                 Direction rDir = randomDirection();
                 if (createNum == 0 || createNum == 3) {
-	                if (rc.canBuildRobot(RobotType.SCOUT, rDir)) {
-	                	rc.buildRobot(RobotType.SCOUT, rDir);
-	                	createNum += 1;
-	                }
+                	if (rc.getTeamBullets() >= 80) { //HC -- Scout cost
+		                if (rc.canBuildRobot(RobotType.SCOUT, rDir)) {
+		                	rc.buildRobot(RobotType.SCOUT, rDir);
+		                	createNum += 1;
+		                }
+		                else {
+		                	buildFailTurns += 1;
+		                	if (buildFailTurns > 10) {
+		                		createNum += 1;
+		                		buildFailTurns = 0;
+		                	}
+		                }
+                	}
                 }
                 else if (createNum == 1 || (createNum > 4 && (createNum - 1) % 3 != 0)) {
-                	if (rc.canBuildRobot(RobotType.SOLDIER, rDir)) {
-                		rc.buildRobot(RobotType.SOLDIER, rDir);
-                		createNum += 1;
+                	if (rc.getTeamBullets() >= 100) { //HC -- Soldier cost
+	                	if (rc.canBuildRobot(RobotType.SOLDIER, rDir)) {
+	                		rc.buildRobot(RobotType.SOLDIER, rDir);
+	                		createNum += 1;
+	                	}
+	                	else {
+		                	buildFailTurns += 1;
+		                	if (buildFailTurns > 10) {
+		                		createNum += 1;
+		                		buildFailTurns = 0;
+		                	}
+		                }
                 	}
                 }
                 else if (createNum == 4) {
-                	if (rc.canBuildRobot(RobotType.LUMBERJACK, rDir)) {
-                		rc.buildRobot(RobotType.LUMBERJACK, rDir);
-                		createNum += 1;
+                	if (rc.getTeamBullets() >= 100) {
+	                	if (rc.canBuildRobot(RobotType.LUMBERJACK, rDir)) {
+	                		rc.buildRobot(RobotType.LUMBERJACK, rDir);
+	                		createNum += 1;
+	                	}
+	                	else {
+		                	buildFailTurns += 1;
+		                	if (buildFailTurns > 10) {
+		                		createNum += 1;
+		                		buildFailTurns = 0;
+		                	}
+		                }
                 	}
                 }
                 else {
-                	if (rc.canBuildRobot(RobotType.TANK, rDir)) {
-                		rc.buildRobot(RobotType.LUMBERJACK, rDir);
-                		createNum += 1;
+                	if (rc.getTeamBullets() > 300) {
+	                	if (rc.canBuildRobot(RobotType.TANK, rDir)) {
+	                		rc.buildRobot(RobotType.TANK, rDir);
+	                		createNum += 1;
+	                	}
+	                	else {
+		                	buildFailTurns += 1;
+		                	if (buildFailTurns > 10) {
+		                		createNum += 1;
+		                		buildFailTurns = 0;
+		                	}
+		                }
                 	}
                 }
 
@@ -148,23 +189,27 @@ public strictfp class RobotPlayer {
 		MapLocation targetTreeLocation = null;
 		int failTurns = 0;
 		
+		Team enemy = rc.getTeam().opponent();
+		
 		while (true) {
 			try {
 				if (targetTreeLocation == null) {
 					targetTreeLocation = scout_getClosestShakeableTreeLocation();
 					if (targetTreeLocation == null) { //No Tree Found
-						if(!tryMove(targetDir)) {
-							targetDir = targetDir.rotateRightDegrees(90);
-							if (!tryMove(targetDir)) {
+                    	if (!dodgeBullets(rc)) {
+							if(!tryMove(targetDir)) {
 								targetDir = targetDir.rotateRightDegrees(90);
 								if (!tryMove(targetDir)) {
 									targetDir = targetDir.rotateRightDegrees(90);
 									if (!tryMove(targetDir)) {
-										targetDir = targetDir.rotateRightDegrees(45);
+										targetDir = targetDir.rotateRightDegrees(90);
+										if (!tryMove(targetDir)) {
+											targetDir = targetDir.rotateRightDegrees(45);
+										}
 									}
 								}
 							}
-						}
+                    	}
 					}
 				}
 				else {
@@ -186,6 +231,18 @@ public strictfp class RobotPlayer {
 					rc.setIndicatorDot(targetTreeLocation, 15, 15, 200);
 				}
 				
+				 // See if there are any nearby enemy robots
+                RobotInfo[] robots = rc.senseNearbyRobots(-1, enemy);
+
+                // If there are some...
+                if (robots.length > 0) {
+                    // And we have enough bullets, and haven't attacked yet this turn...
+                    if (rc.canFireSingleShot()) {
+                        // ...Then fire a bullet in the direction of the enemy.
+                        rc.fireSingleShot(rc.getLocation().directionTo(robots[0].location));
+                    }
+                }
+				
 				Clock.yield();
 			}
 			catch (Exception e) {
@@ -196,6 +253,7 @@ public strictfp class RobotPlayer {
 	}
 	
 	static MapLocation scout_getClosestShakeableTreeLocation() throws GameActionException { //Returns *null* when no trees are found
+		//1.2.2 -- "Robots/Trees/Bullets from senseNearbyRobots/Trees/Bullets() are now returned in order of increasing distance from the specified center point."
 		TreeInfo[] trees = rc.senseNearbyTrees(-1, Team.NEUTRAL);
 		float shortestDistance = Float.MAX_VALUE;
 		MapLocation closestTreeLocation = null;
@@ -236,13 +294,45 @@ public strictfp class RobotPlayer {
                 }
 
                 // Move randomly
-                tryMove(randomDirection());
+            	if (!dodgeBullets(rc)) tryMove(randomDirection());
 
                 // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
                 Clock.yield();
 
             } catch (Exception e) {
                 System.out.println("Soldier Exception");
+                e.printStackTrace();
+            }
+        }
+    }
+    
+    static void runTank() throws GameActionException {
+    	Team enemy = rc.getTeam().opponent();
+
+        while (true) { //From Soldier Code
+            try {
+                MapLocation myLocation = rc.getLocation();
+
+                // See if there are any nearby enemy robots
+                RobotInfo[] robots = rc.senseNearbyRobots(-1, enemy);
+
+                // If there are some...
+                if (robots.length > 0) {
+                    // And we have enough bullets, and haven't attacked yet this turn...
+                    if (rc.canFireSingleShot()) {
+                        // ...Then fire a bullet in the direction of the enemy.
+                        rc.fireSingleShot(rc.getLocation().directionTo(robots[0].location));
+                    }
+                }
+
+                // Move randomly
+            	if (!dodgeBullets(rc)) tryMove(randomDirection());
+
+                // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
+                Clock.yield();
+
+            } catch (Exception e) {
+                System.out.println("Tank Exception");
                 e.printStackTrace();
             }
         }
@@ -277,7 +367,7 @@ public strictfp class RobotPlayer {
                         tryMove(toEnemy);
                     } else {
                         // Move Randomly
-                        tryMove(randomDirection());
+                    	if (!dodgeBullets(rc)) tryMove(randomDirection());
                     }
                 }
 
@@ -289,6 +379,28 @@ public strictfp class RobotPlayer {
                 e.printStackTrace();
             }
         }
+    }
+    
+    static boolean dodgeBullets(RobotController rc) throws GameActionException {
+    	BulletInfo bullet;
+    	try {
+    		bullet = rc.senseNearbyBullets()[0]; //First element should be closest
+    	}
+    	catch (ArrayIndexOutOfBoundsException e) {
+    		return false;
+    	}
+    	if (willCollideWithMe(bullet)) {
+    		float radiansBetween = bullet.dir.radiansBetween(bullet.getLocation().directionTo(rc.getLocation()));
+    		if (radiansBetween >= 0) {
+    			return tryMove(bullet.dir.rotateRightDegrees(90));
+    		}
+    		else {
+    			return tryMove(bullet.dir.rotateLeftDegrees(90));
+    		}
+    	}
+    	else {
+    		return false;
+    	}
     }
 
     /**
